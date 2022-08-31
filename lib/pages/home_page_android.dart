@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:todolist/pages/new_task_page_android.dart';
+
+import '../data/task.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -21,10 +24,11 @@ class _HomePageState extends State<HomePage> {
       ),
       body: ListView.separated(
         itemCount: rowItems.length,
-        itemBuilder: (BuildContext context, int position){
+        itemBuilder: (BuildContext context, int position) {
           return rowItems[position];
         },
-        separatorBuilder: (BuildContext context, int position) => Divider(color: Colors.grey.shade600,),
+        separatorBuilder: (BuildContext context, int position) =>
+            Divider(color: Colors.grey.shade600,),
       ),
 
       // ListView.builder(
@@ -56,64 +60,74 @@ class _HomePageState extends State<HomePage> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          //Using the showDialog
           //   ScaffoldMessenger.of(context).showSnackBar(
           //       SnackBar(
           //           content: Text('Clicou no floatActioButton'),
           //           action: SnackBarAction(label: 'Desfazer', onPressed: () {print('Cliclou no desfazer');}),
           //       ));
           //
-          showDialog(context: context, builder: (BuildContext contex) {
-            return AlertDialog(
-              title: Text('Nova tarefa'),
-              content: Text('Informa a tarefa'),
-              actions: [
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10.0),
-                  child: TextField(controller: _editingController,),
-                ),
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children:[
-                      TextButton(onPressed: () {
-                        Navigator.of(context).pop();
-                        setState(() {
-                          rowItems.add(RowItem(title: _editingController.text));
-                          _editingController.text = '';
-                        });
-                      },
-                          child: Text('OK')
-                      ),
-                      TextButton(
-                        style: TextButton.styleFrom(textStyle: TextStyle(fontWeight: FontWeight.bold)),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('Cancelar', style: TextStyle(color: Colors.red),),
-                      ),
-                    ]
-                )
-
-
-
-              ],
-            );
+          // showDialog(context: context, builder: (BuildContext contex) {
+          //   return AlertDialog(
+          //     title: Text('Nova tarefa'),
+          //     content: Text('Informa a tarefa'),
+          //     actions: [
+          //       Padding(
+          //         padding: EdgeInsets.symmetric(horizontal: 10.0),
+          //         child: TextField(controller: _editingController,),
+          //       ),
+          //       Row(
+          //           mainAxisAlignment: MainAxisAlignment.end,
+          //           children:[
+          //             TextButton(onPressed: () {
+          //               Navigator.of(context).pop();
+          //               setState(() {
+          //                 rowItems.add(RowItem(title: _editingController.text));
+          //                 _editingController.text = '';
+          //               });
+          //             },
+          //                 child: Text('OK')
+          //             ),
+          //             TextButton(
+          //               style: TextButton.styleFrom(textStyle: TextStyle(fontWeight: FontWeight.bold)),
+          //               onPressed: () {
+          //                 Navigator.of(context).pop();
+          //               },
+          //               child: const Text('Cancelar', style: TextStyle(color: Colors.red),),
+          //             ),
+          //           ]
+          //       )
+          //
+          //
+          //
+          //     ],
+          //   );
+          //Using a route
+          final Future<Task?> future = Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (context) => NewTaskPageAndroid()));
+          future.then((task) => {
+            setState(() {
+                rowItems.add(RowItem(title: task?.title ?? '', desc: task?.description ?? ''));
+            })
           });
         },
-
         child: const Icon(Icons.add),
       ),
-      // drawer: Drawer(
-      //   child: Text('Configuração')
-      // ),
-      //  drawer open a screen left side
     );
   }
 }
+// drawer: Drawer(
+//   child: Text('Configuração')
+// ),
+//  drawer open a screen left side
+
 
 class RowItem extends StatefulWidget {
-  RowItem({Key? key, required this.title, this.isDone = false, this.isSelected = false}) : super(key: key);
+  RowItem({Key? key, required this.title, this.desc = '', this.isDone = false, this.isSelected = false}) : super(key: key);
 
   String title;
+  String desc;
   bool isDone;
   bool isSelected;
 
@@ -125,7 +139,8 @@ class _RowItemState extends State<RowItem> {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: Text(widget.title),
+      title: Text(widget.title, style: Theme.of(context).textTheme.headline5,),
+      subtitle: Text(widget.desc, style: Theme.of(context).textTheme.headline6,),
       // subtitle: Text('Sub'),
       // leading: Icon(Icons.abc),
       trailing: widget.isDone ? Icon(Icons.done) : null,
