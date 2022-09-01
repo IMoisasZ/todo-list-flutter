@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:todolist/pages/new_task_page_android.dart';
-
+import 'package:todolist/repository/task_repository.dart';
 import '../data/task.dart';
 
 class HomePage extends StatefulWidget {
@@ -11,10 +11,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  TaskRepository repository = TaskRepository();
+  List<Task> rowItems = [];
 
-  TextEditingController _editingController = TextEditingController();
-
-  List<Widget> rowItems = [];
+  @override
+  void initState(){
+    repository.getTasks().then((value) => rowItems.addAll(value));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +28,14 @@ class _HomePageState extends State<HomePage> {
       body: ListView.separated(
         itemCount: rowItems.length,
         itemBuilder: (BuildContext context, int position) {
-          return rowItems[position];
+          final task = rowItems[position];
+          return RowItem(
+              task: task,
+            onDeleteItem: () => _deleteTask(position, task, context),
+            onValueChange: () {
+              rowItems[position].isDone = !rowItems[position].isDone;
+              _saveList();
+          },);
         },
         separatorBuilder: (BuildContext context, int position) =>
             Divider(color: Colors.grey.shade600,),
@@ -103,18 +113,51 @@ class _HomePageState extends State<HomePage> {
           //     ],
           //   );
           //Using a route
-          final Future<Task?> future = Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (context) => NewTaskPageAndroid()));
-          future.then((task) => {
-            setState(() {
-                rowItems.add(RowItem(title: task?.title ?? '', desc: task?.description ?? ''));
-            })
-          });
+          _createTask(context);
         },
         child: const Icon(Icons.add),
       ),
     );
+  }
+
+  void _createTask(BuildContext context) {
+    final Future<Task?> future = Navigator.of(context).push(
+        MaterialPageRoute(
+            builder: (context) => NewTaskPageAndroid()));
+            future.then((task) => {
+              setState(() {
+                if(task != null){
+                  rowItems.add(task);
+                  _saveList();
+                }
+              })
+            });
+  }
+
+  void _deleteTask(int position, Task task, BuildContext context) {
+    setState(() {
+      rowItems.removeAt(position);
+      _saveList();
+
+      final snackBar = SnackBar(
+        content: Text('Tarefa ${task.title} excluida!'),
+        action: SnackBarAction(
+          label: 'Desfazer',
+          textColor: Colors.white,
+          onPressed: () {
+            setState(() {
+              rowItems.insert(position, task);
+              _saveList();
+            });
+          },
+        ),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    });
+  }
+
+  void _saveList() {
+    repository.saveTasks(rowItems);
   }
 }
 // drawer: Drawer(
@@ -124,12 +167,12 @@ class _HomePageState extends State<HomePage> {
 
 
 class RowItem extends StatefulWidget {
-  RowItem({Key? key, required this.title, this.desc = '', this.isDone = false, this.isSelected = false}) : super(key: key);
+  RowItem({Key? key, required this.task, this.isSelected = false, required this.onValueChange, required this.onDeleteItem}) : super(key: key);
 
-  String title;
-  String desc;
-  bool isDone;
+  Task task;
   bool isSelected;
+  VoidCallback onValueChange;
+  VoidCallback onDeleteItem;
 
   @override
   State<RowItem> createState() => _RowItemState();
@@ -138,21 +181,42 @@ class RowItem extends StatefulWidget {
 class _RowItemState extends State<RowItem> {
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      title: Text(widget.title, style: Theme.of(context).textTheme.headline5,),
-      subtitle: Text(widget.desc, style: Theme.of(context).textTheme.headline6,),
-      // subtitle: Text('Sub'),
-      // leading: Icon(Icons.abc),
-      trailing: widget.isDone ? Icon(Icons.done) : null,
-      // enabled: true,
-      selected: widget.isSelected ? true : false,
-
-      onTap: () {
-        setState(() {
-          widget.isDone = !widget.isDone;
-          widget.isSelected = !widget.isSelected;
-        });
+    return Dismissible(
+      key: UniqueKey(),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) {
+        widget.onDeleteItem();
       },
+      background: Container(
+        color: Colors.red,
+        child: const Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+                child: Icon(
+                  Icons.delete,
+                  color: Colors.white,
+            )
+        ),
+        ),
+      ),
+      child: ListTile(
+        title: Text(widget.task.title, style: Theme.of(context).textTheme.headline5,),
+        subtitle: Text(widget.task.description, style: Theme.of(context).textTheme.headline6,),
+        // subtitle: Text('Sub'),
+        // leading: Icon(Icons.abc),
+        trailing: widget.task.isDone ? Icon(Icons.done) : null,
+        // enabled: true,
+        selected: widget.isSelected ? true : false,
+
+        onTap: () {
+          setState(() {
+            widget.task.isDone = !widget.task.isDone;
+            widget.isSelected = !widget.isSelected;
+            widget.onValueChange();
+          });
+        },
+      ),
     );
   }
 }
